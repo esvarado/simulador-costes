@@ -60,6 +60,13 @@ c2.metric("Coste total", f"{coste_total:,.2f} €")
 c3.metric("Beneficio", f"{beneficio:,.2f} €")
 c4.metric("Margen contribución total", f"{margen_contribucion_total:,.2f} €")
 
+if beneficio > 0:
+    st.success(f"La empresa está en zona de beneficio: gana {beneficio:,.2f} €.")
+elif beneficio < 0:
+    st.error(f"La empresa está en zona de pérdidas: pierde {abs(beneficio):,.2f} €.")
+else:
+    st.info("La empresa está exactamente en el punto muerto: beneficio igual a cero.")
+
 st.subheader("Punto muerto, margen de seguridad y apalancamiento operativo")
 
 if precio_venta > coste_variable:
@@ -94,11 +101,22 @@ if precio_venta > coste_variable:
         f"y unos ingresos de **{ingresos_pm:,.2f} €**."
     )
 
+    if beneficio >= 0:
+        st.write(
+            f"Con **{unidades:,.0f} unidades vendidas**, la empresa supera el punto muerto "
+            f"en **{margen_seguridad_unidades:,.0f} unidades** y obtiene un beneficio de "
+            f"**{beneficio:,.2f} €**."
+        )
+    else:
+        st.write(
+            f"Con **{unidades:,.0f} unidades vendidas**, la empresa está por debajo del punto muerto "
+            f"en **{abs(margen_seguridad_unidades):,.0f} unidades** y registra una pérdida de "
+            f"**{abs(beneficio):,.2f} €**."
+        )
+
     st.write(
-        f"Para el nivel actual de **{unidades:,.0f} unidades**, el margen de seguridad es "
-        f"de **{margen_seguridad_unidades:,.0f} unidades**, equivalente a "
-        f"**{margen_seguridad_euros:,.2f} €** y a un **{margen_seguridad_pct:,.2f} %** "
-        f"de las ventas actuales."
+        f"El margen de seguridad equivale a **{margen_seguridad_euros:,.2f} €** "
+        f"y representa un **{margen_seguridad_pct:,.2f} %** de las ventas actuales."
     )
 
     st.subheader("Representación gráfica del modelo")
@@ -110,13 +128,33 @@ if precio_venta > coste_variable:
     costes_fijos_linea = np.full_like(x, coste_fijo, dtype=float)
     costes_variables_linea = coste_variable * x
     costes_totales_linea = costes_fijos_linea + costes_variables_linea
+    beneficio_linea = ingresos_linea - costes_totales_linea
 
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(11, 6))
 
     ax.plot(x, ingresos_linea, label="Ingresos")
     ax.plot(x, costes_totales_linea, label="Costes totales")
     ax.plot(x, costes_fijos_linea, linestyle="--", label="Costes fijos")
     ax.plot(x, costes_variables_linea, linestyle=":", label="Costes variables")
+
+    # Zonas de beneficio y pérdida
+    ax.fill_between(
+        x,
+        ingresos_linea,
+        costes_totales_linea,
+        where=(ingresos_linea >= costes_totales_linea),
+        alpha=0.20,
+        label="Zona de beneficio"
+    )
+
+    ax.fill_between(
+        x,
+        ingresos_linea,
+        costes_totales_linea,
+        where=(ingresos_linea < costes_totales_linea),
+        alpha=0.20,
+        label="Zona de pérdida"
+    )
 
     # Línea vertical del punto muerto
     ax.axvline(
@@ -143,7 +181,15 @@ if precio_venta > coste_variable:
     )
 
     # Punto del escenario actual
-    ax.scatter([unidades], [ingresos], zorder=5)
+    color_punto = "green" if beneficio >= 0 else "red"
+
+    ax.scatter(
+        [unidades],
+        [ingresos],
+        s=90,
+        color=color_punto,
+        zorder=5
+    )
 
     ax.annotate(
         f"Ventas actuales: {unidades:.0f} uds\nBeneficio: {beneficio:,.2f} €",
@@ -159,6 +205,56 @@ if precio_venta > coste_variable:
     ax.grid(True, alpha=0.3)
 
     st.pyplot(fig)
+
+    st.subheader("Evolución del beneficio")
+
+    fig2, ax2 = plt.subplots(figsize=(11, 4))
+
+    ax2.plot(x, beneficio_linea, label="Beneficio")
+    ax2.axhline(0, linestyle="--", label="Beneficio cero")
+    ax2.axvline(punto_muerto, linestyle="--", label="Punto muerto")
+    ax2.axvline(unidades, linestyle="-.", label="Unidades vendidas")
+
+    ax2.fill_between(
+        x,
+        beneficio_linea,
+        0,
+        where=(beneficio_linea >= 0),
+        alpha=0.20,
+        label="Beneficio"
+    )
+
+    ax2.fill_between(
+        x,
+        beneficio_linea,
+        0,
+        where=(beneficio_linea < 0),
+        alpha=0.20,
+        label="Pérdida"
+    )
+
+    ax2.scatter(
+        [unidades],
+        [beneficio],
+        s=90,
+        color=color_punto,
+        zorder=5
+    )
+
+    ax2.annotate(
+        f"Beneficio actual:\n{beneficio:,.2f} €",
+        xy=(unidades, beneficio),
+        xytext=(unidades * 1.05, beneficio * 1.10 if beneficio != 0 else coste_fijo * 0.1),
+        arrowprops=dict(arrowstyle="->")
+    )
+
+    ax2.set_title("Beneficio según unidades vendidas")
+    ax2.set_xlabel("Unidades")
+    ax2.set_ylabel("Beneficio (€)")
+    ax2.legend()
+    ax2.grid(True, alpha=0.3)
+
+    st.pyplot(fig2)
 
 else:
     st.warning(
