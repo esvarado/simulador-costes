@@ -8,6 +8,7 @@ st.set_page_config(
 )
 
 st.title("Modelo coste-ingresos")
+
 st.write(
     "Aplicación docente para analizar costes fijos, costes variables, ingresos, "
     "beneficio, punto muerto, margen de seguridad y apalancamiento operativo."
@@ -87,6 +88,26 @@ if precio_venta > coste_variable:
     else:
         apalancamiento_operativo = np.nan
 
+    # Guardar datos para la pantalla del informe profesional
+    st.session_state["modelo"] = {
+        "coste_fijo": coste_fijo,
+        "coste_variable": coste_variable,
+        "precio_venta": precio_venta,
+        "unidades": unidades,
+        "ingresos": ingresos,
+        "coste_variable_total": coste_variable_total,
+        "coste_total": coste_total,
+        "beneficio": beneficio,
+        "margen_contribucion_unitario": margen_contribucion_unitario,
+        "margen_contribucion_total": margen_contribucion_total,
+        "punto_muerto": punto_muerto,
+        "ingresos_pm": ingresos_pm,
+        "margen_seguridad_unidades": margen_seguridad_unidades,
+        "margen_seguridad_euros": margen_seguridad_euros,
+        "margen_seguridad_pct": margen_seguridad_pct,
+        "apalancamiento_operativo": apalancamiento_operativo,
+    }
+
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Punto muerto", f"{punto_muerto:,.0f} uds")
     m2.metric("Margen seguridad", f"{margen_seguridad_unidades:,.0f} uds")
@@ -119,6 +140,11 @@ if precio_venta > coste_variable:
         f"y representa un **{margen_seguridad_pct:,.2f} %** de las ventas actuales."
     )
 
+    st.info(
+        "Los datos de este escenario se han guardado automáticamente para generar "
+        "el informe profesional en la segunda pantalla de la aplicación."
+    )
+
     st.subheader("Representación gráfica del modelo")
 
     unidades_max = max(int(punto_muerto * 1.5), unidades * 2, 100)
@@ -137,7 +163,6 @@ if precio_venta > coste_variable:
     ax.plot(x, costes_fijos_linea, linestyle="--", label="Costes fijos")
     ax.plot(x, costes_variables_linea, linestyle=":", label="Costes variables")
 
-    # Zonas de beneficio y pérdida
     ax.fill_between(
         x,
         ingresos_linea,
@@ -156,21 +181,18 @@ if precio_venta > coste_variable:
         label="Zona de pérdida"
     )
 
-    # Línea vertical del punto muerto
     ax.axvline(
         punto_muerto,
         linestyle="--",
         label=f"Punto muerto: {punto_muerto:.0f} uds"
     )
 
-    # Línea vertical de las unidades vendidas
     ax.axvline(
         unidades,
         linestyle="-.",
         label=f"Unidades vendidas: {unidades:.0f} uds"
     )
 
-    # Punto de equilibrio
     ax.scatter([punto_muerto], [ingresos_pm], zorder=5)
 
     ax.annotate(
@@ -180,7 +202,6 @@ if precio_venta > coste_variable:
         arrowprops=dict(arrowstyle="->")
     )
 
-    # Punto del escenario actual
     color_punto = "green" if beneficio >= 0 else "red"
 
     ax.scatter(
@@ -261,3 +282,5 @@ else:
         "No se puede calcular el punto muerto porque el precio de venta debe ser "
         "mayor que el coste variable unitario."
     )
+
+    st.session_state["modelo"] = None
